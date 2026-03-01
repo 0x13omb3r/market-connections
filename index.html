@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unexpected Market Connections</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --surface: #12141a;
+    --surface2: #1a1d26;
+    --text: #e8e6df;
+    --muted: #6b6a70;
+    --border: rgba(255,255,255,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Space Mono', monospace; min-height: 100vh; }
+
+  header { padding: 3rem 3rem 2rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 700; line-height: 1.1; }
+  header p { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 0.5rem; }
+  .tag-row { display: flex; gap: 0.6rem; margin-top: 0.8rem; flex-wrap: wrap; }
+  .tag { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.3rem 0.8rem; border-radius: 2px; font-weight: 700; }
+  .last-updated { font-size: 0.6rem; color: var(--muted); margin-top: 0.5rem; letter-spacing: 0.08em; }
+
+  .layout { display: grid; grid-template-columns: 270px 1fr; min-height: calc(100vh - 160px); }
+  .sidebar { border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem; overflow-y: auto; }
+  .sidebar-label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem; margin-top: 1rem; }
+  .sidebar-label:first-child { margin-top: 0; }
+
+  .conn-btn {
+    background: none; border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.68rem;
+    padding: 0.55rem 0.75rem; cursor: pointer; text-align: left;
+    transition: all 0.18s ease; display: flex; align-items: center; gap: 0.5rem;
+    line-height: 1.3;
+  }
+  .conn-btn:hover { background: var(--surface); border-color: rgba(255,255,255,0.18); transform: translateX(2px); }
+  .conn-btn.active { background: var(--surface2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .main { padding: 2rem 2.5rem; overflow-y: auto; }
+  .card { display: none; animation: fadeIn 0.3s ease; }
+  .card.visible { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+  .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+  .card-title { font-family: 'Fraunces', serif; font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 700; line-height: 1.15; max-width: 600px; }
+  .card-updated { font-size: 0.6rem; color: var(--muted); margin-top: 0.3rem; }
+  .badge { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.4rem 0.9rem; border-radius: 2px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+
+  .summary { font-family: 'Fraunces', serif; font-style: italic; font-size: 1.05rem; color: #c5c3bd; line-height: 1.65; margin-bottom: 2rem; padding: 1.2rem 1.4rem; border-left: 3px solid var(--border); background: var(--surface); border-radius: 0 4px 4px 0; }
+
+  .signals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .signal { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1.1rem; }
+  .signal-label { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+  .signal-stat { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; margin-top: 0.4rem; margin-bottom: 0.3rem; }
+  .signal-text { font-size: 0.82rem; line-height: 1.55; }
+
+  .implication { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1.2rem 1.4rem; margin-top: 0.5rem; }
+  .implication-label { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem; }
+  .implication-text { font-size: 0.82rem; line-height: 1.6; }
+
+  .sources { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  .sources-toggle { background: none; border: none; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0; transition: color 0.2s; }
+  .sources-toggle:hover { color: var(--text); }
+  .chevron { transition: transform 0.2s; display: inline-block; }
+  .chevron.open { transform: rotate(90deg); }
+  .sources-list { display: none; flex-direction: column; gap: 0.5rem; margin-top: 0.9rem; }
+  .sources-list.open { display: flex; }
+  .source-item { display: flex; align-items: baseline; gap: 0.6rem; font-size: 0.7rem; line-height: 1.5; flex-wrap: wrap; }
+  .src-num { color: var(--muted); font-size: 0.6rem; min-width: 1.4rem; flex-shrink: 0; }
+  .src-pub { color: var(--muted); font-size: 0.62rem; flex-shrink: 0; }
+  .src-link { color: rgba(255,255,255,0.45); text-decoration: none; word-break: break-all; transition: color 0.15s; }
+  .src-link:hover { color: var(--text); text-decoration: underline; }
+
+  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; gap: 1rem; color: var(--muted); font-size: 0.75rem; }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: rgba(255,255,255,0.4); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { color: #f87171; font-size: 0.75rem; padding: 1rem; }
+
+  .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; text-align: center; gap: 1rem; }
+  .welcome h2 { font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--muted); font-style: italic; }
+  .welcome p { font-size: 0.75rem; color: var(--muted); max-width: 320px; line-height: 1.6; }
+  .arrow-hint { font-size: 1.5rem; color: var(--muted); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: 280px; }
+    .main { padding: 1.5rem; }
+    header { padding: 2rem 1.5rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Unexpected Market Connections</h1>
+  <p id="subtitle">Cross-signal mapping · Loading markets...</p>
+  <div class="tag-row" id="tag-row"></div>
+  <div class="last-updated" id="last-updated"></div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="loading"><div class="spinner"></div>Loading...</div>
+  </nav>
+  <div class="main" id="main">
+    <div class="card visible" id="card-welcome">
+      <div class="welcome">
+        <div class="arrow-hint">←</div>
+        <h2>Pick a signal to explore</h2>
+        <p>Select any trend or cross-market connection on the left to reveal the unexpected thread linking these markets together.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION — Update this URL after deploying your Worker
+// ============================================================
+const WORKER_URL = 'YOUR_WORKER_URL';
+// ============================================================
+
+let allCards = [];
+let activeBtn = null;
+
+async function fetchFromAirtable(table, filter = '') {
+  const url = new URL(`${WORKER_URL}/${table}`);
+  if (filter) url.searchParams.set('filter', filter);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Airtable fetch failed: ${res.status}`);
+  const data = await res.json();
+  return data.records || [];
+}
+
+function parseJSON(str, fallback = []) {
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
+function hexToRgb(hex) {
+  if (!hex || !hex.startsWith('#')) return '136,136,136';
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+function buildSidebarGroup(label, cards) {
+  if (!cards.length) return '';
+  let html = `<div class="sidebar-label">${label}</div>`;
+  for (const card of cards) {
+    const f = card.fields;
+    const color = f['Color Accent'] || '#888';
+    html += `
+      <button class="conn-btn"
+        data-slug="${f.Slug}"
+        style="--accent:${color}"
+        onclick="showCard('${f.Slug}', this)">
+        <span class="dot" style="background:${color}"></span>
+        ${f.Title}
+      </button>`;
+  }
+  return html;
+}
+
+function buildCardHTML(card) {
+  const f = card.fields;
+  const color = f['Color Accent'] || '#888';
+  const rgb = hexToRgb(color);
+  const signals = parseJSON(f['Body JSON'], []);
+  const sources = parseJSON(f['Sources JSON'], []);
+  const updated = f['Last Updated']
+    ? `Updated ${new Date(f['Last Updated']).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}`
+    : '';
+
+  const signalsHTML = signals.map(s => `
+    <div class="signal">
+      <div class="signal-label">${s.label}</div>
+      ${s.stat ? `<div class="signal-stat" style="color:${color}">${s.stat}</div>` : ''}
+      <div class="signal-text">${s.text}</div>
+    </div>`).join('');
+
+  const sourcesHTML = sources.map(s => `
+    <div class="source-item">
+      <span class="src-num">[${s.num}]</span>
+      <span class="src-pub">${s.pub} —</span>
+      <a class="src-link" href="${s.url}" target="_blank" rel="noopener">${s.label}</a>
+    </div>`).join('');
+
+  const implicationHTML = (f['Implication Title'] && f['Implication Text']) ? `
+    <div class="implication">
+      <div class="implication-label">${f['Implication Title']}</div>
+      <div class="implication-text">${f['Implication Text']}</div>
+    </div>` : '';
+
+  return `
+    <div class="card-header">
+      <div>
+        <div class="card-title">${f.Title}</div>
+        ${updated ? `<div class="card-updated">${updated}</div>` : ''}
+      </div>
+      <span class="badge" style="background:rgba(${rgb},0.1);color:${color};border:1px solid rgba(${rgb},0.3)">${f['Badge Label'] || ''}</span>
+    </div>
+    ${f.Summary ? `<div class="summary">${f.Summary}</div>` : ''}
+    <div class="signals-grid">${signalsHTML}</div>
+    ${implicationHTML}
+    ${sourcesHTML ? `
+    <div class="sources">
+      <button class="sources-toggle" onclick="toggleSources(this)">
+        <span class="chevron">▶</span> Sources
+      </button>
+      <div class="sources-list">${sourcesHTML}</div>
+    </div>` : ''}`;
+}
+
+function showCard(slug, btn) {
+  document.getElementById('card-welcome').classList.remove('visible');
+  document.querySelectorAll('.card[data-slug]').forEach(c => c.classList.remove('visible'));
+
+  const target = document.querySelector(`.card[data-slug="${slug}"]`);
+  if (target) target.classList.add('visible');
+
+  if (activeBtn) {
+    activeBtn.classList.remove('active');
+    activeBtn.style.borderColor = '';
+    activeBtn.style.color = '';
+  }
+  if (btn) {
+    btn.classList.add('active');
+    const color = btn.style.getPropertyValue('--accent');
+    btn.style.borderColor = color;
+    btn.style.color = color;
+    activeBtn = btn;
+  }
+}
+
+function toggleSources(btn) {
+  const chevron = btn.querySelector('.chevron');
+  const list = btn.nextElementSibling;
+  chevron.classList.toggle('open');
+  list.classList.toggle('open');
+}
+
+async function init() {
+  try {
+    const records = await fetchFromAirtable('Cards', '{Active}=1');
+    records.sort((a,b) => (a.fields['Sort Order']||99) - (b.fields['Sort Order']||99));
+    allCards = records;
+
+    const markets = records.filter(r => r.fields.Type === 'market');
+    const connections = records.filter(r => r.fields.Type === 'connection');
+    const convergence = records.filter(r => r.fields.Type === 'convergence');
+
+    const sidebar = document.getElementById('sidebar');
+    sidebar.innerHTML =
+      buildSidebarGroup('Single Market', markets) +
+      buildSidebarGroup('Cross-Market Surprises', connections) +
+      (convergence.length ? '<div class="sidebar-label" style="margin-top:1.5rem">The Big Picture</div>' : '') +
+      convergence.map(card => {
+        const f = card.fields;
+        return `<button class="conn-btn" data-slug="${f.Slug}" style="border-color:rgba(255,255,255,0.3);font-style:italic" onclick="showCard('${f.Slug}', this)"><span class="dot" style="background:#fff;opacity:0.4"></span>${f.Title}</button>`;
+      }).join('');
+
+    const main = document.getElementById('main');
+    for (const card of records) {
+      const f = card.fields;
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.setAttribute('data-slug', f.Slug);
+      div.innerHTML = buildCardHTML(card);
+      main.appendChild(div);
+    }
+
+    const marketColors = {
+      ai:       { label: 'Tech & AI',              color: '#00e5ff' },
+      crypto:   { label: 'Finance & Crypto',        color: '#ff6b35' },
+      os:       { label: 'Computing & OS',          color: '#a8ff3e' },
+      chain:    { label: 'Blockchain & Infra',      color: '#c084fc' },
+      energy:   { label: 'Energy & Power',          color: '#fbbf24' },
+      defense:  { label: 'Defense & Dual-Use',      color: '#f87171' },
+      biotech:  { label: 'Biotech & AI',            color: '#34d399' },
+      space:    { label: 'Space & Satellite',       color: '#818cf8' },
+      labor:    { label: 'Labor Markets',           color: '#fb923c' },
+      sovereign:{ label: 'Sovereign AI',            color: '#f472b6' },
+      media:    { label: 'Media & Information',     color: '#67e8f9' },
+      quantum:  { label: 'Quantum Computing',       color: '#a5b4fc' },
+      robotics: { label: 'Robotics & Physical AI',  color: '#4ade80' },
+      supply:   { label: 'Supply Chain',            color: '#fcd34d' },
+    };
+
+    const tagRow = document.getElementById('tag-row');
+    markets.forEach(m => {
+      const slug = m.fields.Slug;
+      const meta = marketColors[slug];
+      if (!meta) return;
+      const rgb = hexToRgb(meta.color);
+      tagRow.innerHTML += `<span class="tag" style="background:rgba(${rgb},0.12);color:${meta.color};border:1px solid rgba(${rgb},0.3)">${meta.label}</span>`;
+    });
+
+    document.getElementById('subtitle').textContent =
+      `Cross-signal mapping · ${markets.length} markets · ${connections.length} connections · 2025–2026`;
+
+    const dates = records.map(r => r.fields['Last Updated']).filter(Boolean).sort().reverse();
+    if (dates.length) {
+      document.getElementById('last-updated').textContent =
+        `Last researched: ${new Date(dates[0]).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})}`;
+    }
+
+  } catch(err) {
+    document.getElementById('sidebar').innerHTML = `<div class="error">Failed to load content.<br>${err.message}</div>`;
+    console.error(err);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
